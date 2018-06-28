@@ -1753,7 +1753,12 @@ set_backend(memory, _) ->
     set_backend(riak_kv_memory_backend);
 set_backend(multi, Extras) ->
     set_backend(riak_kv_multi_backend, Extras);
-set_backend(Backend, _) when Backend == riak_kv_bitcask_backend; Backend == riak_kv_eleveldb_backend; Backend == riak_kv_memory_backend ->
+set_backend(leveled, _) ->
+    set_backend(riak_kv_leveled_backend);
+set_backend(Backend, _) when Backend == riak_kv_bitcask_backend;
+			     Backend == riak_kv_eleveldb_backend;
+			     Backend == riak_kv_memory_backend;
+			     Backend == riak_kv_leveled_backend ->
     lager:info("rt:set_backend(~p)", [Backend]),
     update_app_config(all, [{riak_kv, [{storage_backend, Backend}]}]),
     get_backends();
