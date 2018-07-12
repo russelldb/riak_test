@@ -26,7 +26,8 @@
 %% API
 -export([start_link/0,
          workers/0,
-         stop_child/1]).
+         stop_child/1,
+         restart_workers/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -50,6 +51,13 @@ stop_child(Id) ->
     ok = supervisor:terminate_child(?MODULE, Id),
     ok = supervisor:delete_child(?MODULE, Id).
 
+%% @doc restart all workers, if for example, a config change needs it
+restart_workers() ->
+    Children = supervisor:which_children(?MODULE),
+    [supervisor:terminate_child(?MODULE, Id) || {Id, _Pid, _, [Mod]} <- Children,
+                                                Mod == basho_bench_worker],
+    [supervisor:restart_child(?MODULE, Id) || {Id, _Pid, _, [Mod]} <- Children,
+                                              Mod == basho_bench_worker].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -69,11 +77,19 @@ init([]) ->
             _Driver -> [?CHILD(basho_bench_measurement, worker)]
         end,
 
+    MuddleMarmoset =
+        case basho_bench_config:get(muddle_marmoset, undefined) of
+            undefined ->
+                [];
+            _MuddleSpec -> [?CHILD(basho_bench_muddle_marmoset, worker)]
+        end,
+
     {ok, {{one_for_one, 5, 10},
-        [?CHILD(basho_bench_stats, worker)] ++
-        Workers ++
-        MeasurementDriver
-    }}.
+          [?CHILD(basho_bench_stats, worker)] ++
+              Workers ++
+              MeasurementDriver ++
+              MuddleMarmoset
+         }}.
 
 %% ===================================================================
 %% Internal functions
